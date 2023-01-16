@@ -1,0 +1,16 @@
+{
+  "name": "getforegroundwindow",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ffi-napi": "^4.0.3",
+    "windows-ffi": "^0.0.4"
+  }
+}
