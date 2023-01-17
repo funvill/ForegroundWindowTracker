@@ -4,13 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.mjs"
+    "start": "node index.js",
+    "report": "node report.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "ffi-napi": "^4.0.3",
-    "windows-ffi": "^0.0.4"
+    "process-list": "^2.0.0",
+    "ref-napi": "^3.0.3"
   }
 }
