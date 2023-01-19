@@ -12,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "ffi-napi": "^4.0.3",
+    "keylogger.js": "^0.0.4",
     "process-list": "^2.0.0",
     "ref-napi": "^3.0.3"
   }

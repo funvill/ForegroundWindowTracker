@@ -16,6 +16,7 @@
 const windowAPIHelper = require("./windowsAPIHelper.js");
 const fs = require("fs");
 const { snapshot } = require("process-list");
+const keylogger = require("keylogger.js");
 
 const settings = {
 
@@ -30,6 +31,12 @@ const settings = {
 
 	// The delta mouse position before a keyframe is written to the file
 	keyFrameMouseDelta: 30,
+
+	// The max amount of keys to record before dumping to the file.
+	keyboardCount: 100,
+
+	// A list of keywords that if found in the window text will cause the window to be ignored
+	blacklistKeywords: ["[InPrivate]"],
 };
 
 
@@ -84,19 +91,18 @@ function UpdateLastFrame(activity, info) {
 	lastFrame.timeMS = date.getTime();
 }
 
+function WriteAppActivity(fileName, activity, foregroundWindowInfo) {
 
-/*
-foregroundWindowInfo:  {
-	windowInfo: {
-		hwnd: 1116500,
-		pid: 30340,
-		windowModuleFileName: 'C:\\Program Files\\nodejs\\node.exe',
-		windowText: 'index.js - ForegroundWindowTracker - Visual Studio Code'
-	},
-	cursorPos: { x: 1601, y: 1107 }
-}
-*/
-function WriteToFile(fileName, activity, foregroundWindowInfo) {
+	// Check for blacklisted keywords
+	for (var i = 0; i < settings.blacklistKeywords.length; i++) {
+		if (foregroundWindowInfo.windowInfo.windowText.includes(settings.blacklistKeywords[i])) {
+			// Update the last frame
+			UpdateLastFrame(ACTIVITY_NONE, foregroundWindowInfo);
+			return;
+		}
+	}
+
+	// Update the last frame
 	UpdateLastFrame(activity, foregroundWindowInfo);
 
 	// Create the text 
@@ -126,9 +132,9 @@ function WriteToFile(fileName, activity, foregroundWindowInfo) {
 // ------------------ Main ------------------ 
 
 console.log("Starting Build: " + settings.buildNumber);
-console.log("fileName: " + GetFileName());
+console.log("fileName: " + "app-" + GetFileName());
 // Add header 
-fs.appendFile(GetFileName(), "time,activity,mouseX,mouseY,windowModuleFileName,windowText,name,path,cmdline\n", function (err) {
+fs.appendFile("app-" + GetFileName(), "time,activity,mouseX,mouseY,windowModuleFileName,windowText,name,path,cmdline\n", function (err) {
 	if (err) throw err;
 });
 
@@ -183,8 +189,66 @@ async function main() {
 	// Check to see if we need to log this activity.
 	let activity = CheckForActivity(info);
 	if (activity != ACTIVITY_NONE) {
-		WriteToFile(GetFileName(), activity, info,);
+		WriteAppActivity("app-" + GetFileName(), activity, info,);
 	}
 }
 
 setInterval(main, settings.intervalMS);
+
+let keyboardMap = [];
+let keyboardCount = 0;
+
+
+keylogger.start((key, isKeyUp, keyCode) => {
+
+	// if the key is not in the map, add it
+	if (keyboardMap[key] == undefined) {
+		keyboardMap[key] = 0;
+	}
+	if (isKeyUp) {
+		keyboardMap[key] += 1;
+	}
+
+	// incurment the total.
+	keyboardCount += 1;
+
+	// After a certain number of key presses, print the map 
+	if (CheckForKeyboardActivity()) {
+		WriteKeyboardActivity();
+		console.log(keyboardMap);
+	}
+});
+
+function CheckForKeyboardActivity() {
+	if (keyboardCount > settings.keyboardCount) {
+		return true;
+	}
+	return false;
+}
+
+function WriteKeyboardActivity() {
+
+	var date = new Date();
+	var text = date.toISOString() + "," + keyboardCount + ",";
+
+	// Loop through the map and add the key and count to the text
+	for (var key in keyboardMap) {
+		text += key + ":" + keyboardMap[key] + ",";
+	}
+
+	console.log(text);
+	text += "\n"; // Add the new line after printing to the screen
+
+
+	// Write the text to the file
+	fs.appendFile('keyboard-' + GetFileName(), text, function (err) {
+		if (err) {
+			console.log("Error writing to file: " + fileName);
+			// Don't throw an error, just keep going.
+		}
+	});
+
+	// Reset the keyboard count
+	keyboardCount = 0;
+	keyboardMap = [];
+}
